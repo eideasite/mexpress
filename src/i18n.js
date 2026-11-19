@@ -176,6 +176,8 @@ Object.assign(tamil, {
   'Multi-AI Search': 'பல AI தேடல்',
   'Privacy Policy': 'தனியுரிமைக் கொள்கை',
   'Contact us:': 'தொடர்புக்கு:',
+  Email: 'மின்னஞ்சல்',
+  'Footer links': 'அடிக்குறிப்பு இணைப்புகள்',
   'Copy contact URL': 'தொடர்பு இணைய முகவரியை நகலெடுக்கவும்',
   'Contact URL copied': 'தொடர்பு இணைய முகவரி நகலெடுக்கப்பட்டது',
   Copied: 'நகலெடுக்கப்பட்டது',
@@ -185,7 +187,14 @@ Object.assign(tamil, {
   'Opened Google AI Mode with your query.': 'உங்கள் தேடலுடன் Google AI Mode திறக்கப்பட்டது.',
   'One prompt, three AI apps': 'ஒரு prompt, மூன்று AI செயலிகள்',
   'Your prompt': 'உங்கள் prompt',
-  'Send one prompt to Gemini, ChatGPT and Meta AI. With the browser helper installed, it is submitted automatically; otherwise the prompt is copied so you can paste it.': 'ஒரே prompt-ஐ Gemini, ChatGPT, Meta AI ஆகியவற்றுக்கு அனுப்புங்கள். Browser helper நிறுவப்பட்டிருந்தால் தானாகச் சமர்ப்பிக்கப்படும்; இல்லையெனில் prompt நகலெடுக்கப்படும்.',
+  'Send a prompt and optional image to Gemini, ChatGPT and Meta AI. With the browser helper enabled, the image is handed off automatically; otherwise the prompt is copied and you can attach the image manually.': 'Prompt மற்றும் விருப்பமான படத்தை Gemini, ChatGPT, Meta AI-க்கு அனுப்புங்கள். Browser helper இயக்கப்பட்டிருந்தால் படம் தானாக அனுப்பப்படும்; இல்லையெனில் prompt நகலெடுக்கப்பட்டு, படத்தை AI தளத்தில் நீங்களே இணைக்கலாம்.',
+  'Attach image': 'படத்தை இணைக்கவும்',
+  'The image stays on this device until you submit the handoff.': 'நீங்கள் அனுப்பும் வரை படம் இந்தச் சாதனத்திலேயே இருக்கும்.',
+  'I have the browser helper installed; include the image in the handoff.': 'Browser helper நிறுவப்பட்டுள்ளது; படத்தையும் அனுப்பவும்.',
+  'Choose an image file.': 'படக் கோப்பைத் தேர்ந்தெடுக்கவும்.',
+  'Choose an image smaller than 10 MB.': '10 MB-க்கு குறைவான படத்தைத் தேர்ந்தெடுக்கவும்.',
+  'This image is too large to hand off safely. Choose a smaller image.': 'இந்தப் படத்தை அனுப்ப முடியாத அளவுக்குப் பெரியது. சிறிய படத்தைத் தேர்ந்தெடுக்கவும்.',
+  'Could not prepare this image. Try another image file.': 'இந்தப் படத்தைத் தயாரிக்க முடியவில்லை. வேறொரு படக் கோப்பை முயற்சிக்கவும்.',
   'Send to all 3 AIs': 'மூன்று AI-களுக்கும் அனுப்பு',
   'Enter opens 3 AIs and copies your prompt. Shift+Enter adds a line.': 'Enter அழுத்தினால் prompt copy ஆகி 3 AI-கள் திறக்கும். Shift+Enter புதிய வரியைச் சேர்க்கும்.',
   'Enter opens AI tools and copies your prompt. Shift+Enter adds a line.': 'Enter அழுத்தினால் AI கருவிகள் திறந்து உங்கள் prompt நகலெடுக்கப்படும். Shift+Enter புதிய வரியைச் சேர்க்கும்.',
@@ -314,6 +323,22 @@ Object.assign(tamil, {
   'Reading progress': 'வாசிப்பு முன்னேற்றம்',
   'Finished reading.': 'வாசித்து முடிந்தது.',
   'Read aloud could not continue. Try another voice or restart playback.': 'சத்தமாக வாசிப்பைத் தொடர முடியவில்லை. வேறு குரலைத் தேர்ந்தெடுத்து மீண்டும் முயற்சிக்கவும்.',
+})
+
+Object.assign(tamil, {
+  'Write with good intent': 'நல்ல நோக்கத்துடன் எழுதுங்கள்',
+  'Choose to do good': 'அறம் செய விரும்பு',
+  'Before you begin, consider how this writing could help someone.': 'தொடங்கும் முன், இந்த எழுத்து யாருக்காவது எவ்வாறு உதவலாம் என்று சிந்தியுங்கள்.',
+  'Review before publishing': 'வெளியிடும் முன் சரிபார்க்கவும்',
+  'A quick quality check before you publish locally.': 'உள்ளூரில் வெளியிடும் முன் விரைவாகத் தரத்தைச் சரிபார்க்கவும்.',
+  'The title clearly describes the article.': 'தலைப்பு கட்டுரையின் உள்ளடக்கத்தைத் தெளிவாகச் சொல்கிறது.',
+  'Names, facts, and links have been checked.': 'பெயர்கள், உண்மைகள், இணைப்புகள் சரிபார்க்கப்பட்டன.',
+  'I have read the article once before publishing.': 'வெளியிடும் முன் கட்டுரையை ஒருமுறை வாசித்துவிட்டேன்.',
+  'One-hand typing': 'ஒருகை தட்டச்சு',
+  'One-hand mode on': 'ஒருகை முறை இயங்குகிறது',
+  'Toolbar side': 'கருவிப்பட்டியின் பக்கம்',
+  Left: 'இடது',
+  Right: 'வலது',
 })
 
 const english = Object.fromEntries(Object.entries(tamil).map(([key, value]) => [value, key]))

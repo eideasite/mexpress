@@ -1,4 +1,4 @@
-const PROMPT_PARAMETER = 'jeyamohan_prompt'
+const PAYLOAD_PARAMETER = 'jeyamohan_payload'
 const COMPOSER_SELECTORS = [
   'textarea[data-testid*="prompt"]',
   'textarea#prompt-textarea',
@@ -15,15 +15,23 @@ const SEND_SELECTORS = [
   'button[type="submit"]',
 ]
 
-function readPromptFromHash() {
+function readHandoffFromHash() {
   const params = new URLSearchParams(window.location.hash.slice(1))
-  const prompt = params.get(PROMPT_PARAMETER)
-  if (!prompt) return ''
+  const payload = params.get(PAYLOAD_PARAMETER)
+  const legacyPrompt = params.get('jeyamohan_prompt')
+  if (!payload && !legacyPrompt) return null
 
   const cleanUrl = new URL(window.location.href)
   cleanUrl.hash = ''
   history.replaceState(history.state, '', cleanUrl.toString())
-  return prompt
+  if (legacyPrompt) return { prompt: legacyPrompt, image: null }
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed?.version === 1 && typeof parsed.prompt === 'string') return parsed
+  } catch {
+    // Ignore malformed handoff payloads.
+  }
+  return null
 }
 
 function queryDeep(root, selector, results = []) {
@@ -107,7 +115,27 @@ function showStatus(message, failed = false) {
   window.setTimeout(() => status.remove(), 7000)
 }
 
-async function handoffPrompt(prompt) {
+async function attachImage(image) {
+  if (typeof image.dataUrl !== 'string'
+    || !image.dataUrl.startsWith('data:image/jpeg;base64,')
+    || image.dataUrl.length > 1_000_000) return false
+  const inputs = [...document.querySelectorAll('input[type="file"]')]
+  const input = inputs.find((candidate) => !candidate.accept || /image|\*/i.test(candidate.accept))
+  if (!input) return false
+  const response = await fetch(image.dataUrl)
+  const blob = await response.blob()
+  const file = new File([blob], image.name || 'attached-image.jpg', { type: blob.type || image.type || 'image/jpeg' })
+  const transfer = new DataTransfer()
+  transfer.items.add(file)
+  input.files = transfer.files
+  input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+  input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  await new Promise((resolve) => window.setTimeout(resolve, 700))
+  return true
+}
+
+async function handoffPrompt(payload) {
+  const { prompt, image } = payload
   let composer = null
   for (let attempt = 0; attempt < 60 && !composer; attempt += 1) {
     composer = findComposer()
@@ -120,12 +148,24 @@ async function handoffPrompt(prompt) {
   }
 
   setComposerText(composer, prompt)
+  if (image?.dataUrl) {
+    try {
+      if (!await attachImage(image)) {
+        showStatus('Prompt is ready, but this AI page did not expose an image attachment control. Attach the image manually.', true)
+        return
+      }
+    } catch {
+      showStatus('Prompt is ready, but the image could not be attached. Attach it manually before sending.', true)
+      return
+    }
+  }
+
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 150))
     const sendButton = findSendButton(composer)
     if (sendButton) {
       sendButton.click()
-      showStatus('Prompt sent to this AI.')
+      showStatus(image ? 'Prompt and image sent to this AI.' : 'Prompt sent to this AI.')
       return
     }
   }
@@ -133,8 +173,8 @@ async function handoffPrompt(prompt) {
   showStatus('Prompt filled in. Press Send to submit it.', true)
 }
 
-const prompt = readPromptFromHash()
-if (prompt && !window.__jeyamohanPromptHandoffStarted) {
+const payload = readHandoffFromHash()
+if (payload?.prompt && !window.__jeyamohanPromptHandoffStarted) {
   window.__jeyamohanPromptHandoffStarted = true
-  void handoffPrompt(prompt)
+  void handoffPrompt(payload)
 }

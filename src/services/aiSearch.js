@@ -52,14 +52,15 @@ export function openGoogleAiModeSearch(query) {
   return true
 }
 
-export async function openAiProviderTabs(text, providers = AI_PROVIDERS) {
+export async function openAiProviderTabs(text, providers = AI_PROVIDERS, image = null) {
   if (!text.trim() || !providers.length) return
 
   const tabs = []
   for (const provider of providers) {
     try {
       const providerUrl = new URL(provider.url)
-      providerUrl.hash = new URLSearchParams({ jeyamohan_prompt: text }).toString()
+      const handoff = JSON.stringify({ version: 1, prompt: text, image })
+      providerUrl.hash = new URLSearchParams({ jeyamohan_payload: handoff }).toString()
       const tab = window.open(providerUrl.toString(), '_blank')
       if (tab) {
         tab.opener = null
@@ -89,5 +90,5 @@ export async function openAiProviderTabs(text, providers = AI_PROVIDERS) {
     if (timeoutId !== undefined) window.clearTimeout(timeoutId)
   }
 
-  return { opened: tabs.length, total: providers.length, copied }
+  return { opened: tabs.length, total: providers.length, copied, imageIncluded: Boolean(image) }
 }

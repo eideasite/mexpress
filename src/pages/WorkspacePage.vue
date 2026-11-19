@@ -88,7 +88,6 @@ const postEditImage = ref(null)
 const activePostText = computed(() => editingPost.value ? postEditText.value : postText.value)
 const activePostImage = computed(() => editingPost.value ? postEditImage.value : postImage.value)
 const postMenuId = ref('')
-const postStorageDetailsOpen = ref(false)
 const postSaving = ref(false)
 const postDialogOpen = ref(false)
 const postTextArea = ref(null)
@@ -120,12 +119,21 @@ watch(profileForm, (profile) => {
   workspace.value.profile = { ...profile }
 }, { deep: true, flush: 'sync' })
 const externalAiPrompt = ref('')
+const externalAiImage = ref(null)
+const externalAiImageHelperEnabled = ref(false)
+const externalAiImageError = ref('')
 const externalAiPromptSearching = ref(false)
 const externalAiPromptStorageError = ref(false)
 const externalAiProviderPickerOpen = ref(false)
 const externalAiPendingPrompt = ref('')
 const mobileViewportQuery = window.matchMedia('(max-width: 700px)')
 const mobileViewport = ref(mobileViewportQuery.matches)
+const oneHandPreferencesStorageKey = 'jeyamohan-one-hand-editor-v1'
+const initialOneHandPreferences = loadOneHandPreferences()
+const oneHandMode = ref(initialOneHandPreferences.enabled)
+const oneHandSide = ref(initialOneHandPreferences.side)
+const visualKeyboardInset = ref(0)
+const oneHandStyle = computed(() => ({ '--keyboard-inset': `${visualKeyboardInset.value}px` }))
 const avatarOptions = ['✍️', '🙂', '😊', '🌿', '📚', '✨', '🖋️']
 const fontFamilyOptions = [
   { value: 'inter', label: 'Inter', css: "'Inter', 'Noto Sans Tamil', 'Latha', 'Nirmala UI', system-ui, sans-serif" },
@@ -148,7 +156,15 @@ const accessibility = ref({
   colorFilter: 'none',
 })
 const message = ref('')
+const messageTone = ref('success')
 const messageTimer = ref()
+const reviewChecksStorageKey = 'jeyamohan-article-review-checks-v1'
+const reviewItems = [
+  { key: 'title', label: 'The title clearly describes the article.' },
+  { key: 'facts', label: 'Names, facts, and links have been checked.' },
+  { key: 'proofread', label: 'I have read the article once before publishing.' },
+]
+const reviewChecksByArticle = ref(loadReviewChecks())
 const externalAiPromptStorageKey = 'jeyamohan-external-ai-prompt-v1'
 const externalAiProviders = AI_PROVIDERS
 const postEmojis = ['🙂', '😊', '❤️', '😂', '🙏', '✨']
@@ -198,6 +214,63 @@ const currentArticle = computed(() => {
     || workspace.value.articles[0]
     || null
 })
+const completedReviewCount = computed(() => {
+  const checks = reviewChecksByArticle.value[currentArticle.value?.id] || {}
+  return reviewItems.filter((item) => checks[item.key]).length
+})
+
+function loadReviewChecks() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(reviewChecksStorageKey) || '{}')
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {}
+    return Object.fromEntries(Object.entries(saved).map(([articleId, checks]) => [
+      articleId,
+      Object.fromEntries(reviewItems.map((item) => [item.key, checks?.[item.key] === true])),
+    ]))
+  } catch {
+    return {}
+  }
+}
+
+function loadOneHandPreferences() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(oneHandPreferencesStorageKey) || 'null')
+    return {
+      enabled: saved?.enabled === true,
+      side: saved?.side === 'left' ? 'left' : 'right',
+    }
+  } catch {
+    return { enabled: false, side: 'right' }
+  }
+}
+
+watch(reviewChecksByArticle, (checks) => {
+  try {
+    localStorage.setItem(reviewChecksStorageKey, JSON.stringify(checks))
+  } catch {
+    // Keep checklist interaction available for this session if storage is unavailable.
+  }
+}, { deep: true, flush: 'sync' })
+
+watch([oneHandMode, oneHandSide], ([enabled, side]) => {
+  try {
+    localStorage.setItem(oneHandPreferencesStorageKey, JSON.stringify({ enabled, side }))
+  } catch {
+    // The editor remains usable if the preference cannot be stored.
+  }
+}, { flush: 'sync' })
+
+function setReviewCheck(key, checked) {
+  if (!currentArticle.value) return
+  const articleId = currentArticle.value.id
+  reviewChecksByArticle.value = {
+    ...reviewChecksByArticle.value,
+    [articleId]: {
+      ...reviewChecksByArticle.value[articleId],
+      [key]: checked,
+    },
+  }
+}
 const readAloudText = computed(() => {
   if (!currentArticle.value) return ''
   return `${getArticleTitle(currentArticle.value)}\n\n${richTextToPlainText(currentArticle.value.body || '')}`.trim()
@@ -285,12 +358,14 @@ watch(accessibility, (settings) => {
   try {
     localStorage.setItem('jeyamohan-accessibility-settings-v1', JSON.stringify(settings))
   } catch {
-    showMessage('Accessibility settings could not be saved in this browser.')
+    showMessage('Accessibility settings could not be saved in this browser.', 'error')
   }
 }, { deep: true, immediate: true })
 
-function showMessage(text) {
-  message.value = text
+function showMessage(text, tone = 'success') {
+  messageTone.value = tone
+  const icon = tone === 'error' ? '❌' : tone === 'warning' ? '⚠️' : '✅'
+  message.value = `${icon} ${text}`
   window.clearTimeout(messageTimer.value)
   messageTimer.value = window.setTimeout(() => { message.value = '' }, 3500)
 }
@@ -306,7 +381,7 @@ watch(focusMode, (enabled) => {
   try {
     localStorage.setItem(FOCUS_MODE_STORAGE_KEY, enabled ? 'enabled' : 'disabled')
   } catch {
-    showMessage(t('Focus mode preference could not be saved in this browser.'))
+    showMessage(t('Focus mode preference could not be saved in this browser.'), 'error')
   }
   updateFocusModePageClass()
 }, { flush: 'sync' })
@@ -318,7 +393,22 @@ watch(page, (currentPage) => {
 
 function updateMobileViewport() {
   mobileViewport.value = mobileViewportQuery.matches
+  updateVisualKeyboardInset()
 }
+
+function updateVisualKeyboardInset() {
+  const viewport = window.visualViewport
+  if (!oneHandMode.value || !viewport) {
+    visualKeyboardInset.value = 0
+    return
+  }
+  // Browsers resize different viewports for the on-screen keyboard. Use the
+  // visual viewport when available; don't infer keyboard height from innerHeight.
+  const inset = window.innerHeight - viewport.height - viewport.offsetTop
+  visualKeyboardInset.value = inset > 120 ? Math.round(inset) : 0
+}
+
+watch(oneHandMode, updateVisualKeyboardInset, { flush: 'post' })
 
 try {
   externalAiPrompt.value = localStorage.getItem(externalAiPromptStorageKey) || ''
@@ -341,11 +431,54 @@ function handleExternalAiPromptKeydown(event) {
   openPromptInAllAiTools()
 }
 
+async function handleExternalAiImage(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  externalAiImageError.value = ''
+  externalAiImage.value = null
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    externalAiImageError.value = 'Choose an image file.'
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    externalAiImageError.value = 'Choose an image smaller than 10 MB.'
+    return
+  }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72))
+    if (!blob) throw new Error('Could not prepare this image.')
+    if (blob.size > 700 * 1024) {
+      externalAiImageError.value = 'This image is too large to hand off safely. Choose a smaller image.'
+      return
+    }
+    externalAiImage.value = {
+      name: file.name,
+      type: 'image/jpeg',
+      dataUrl: await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(blob)
+      }),
+    }
+  } catch {
+    externalAiImageError.value = 'Could not prepare this image. Try another image file.'
+  }
+}
+
 async function openPromptInAllAiTools() {
   if (externalAiPromptSearching.value) return
   const prompt = externalAiPrompt.value
   if (!prompt.trim()) {
-    showMessage(t('Enter a prompt to continue.'))
+    showMessage(t('Enter a prompt to continue.'), 'warning')
     return
   }
 
@@ -368,15 +501,24 @@ function openPromptWithProvider(provider) {
 async function openPromptWithProviders(prompt, providers = AI_PROVIDERS) {
   externalAiPromptSearching.value = true
   try {
-    const result = await openAiProviderTabs(prompt, providers)
+    const handoffImage = externalAiImageHelperEnabled.value ? externalAiImage.value : null
+    const result = await openAiProviderTabs(prompt, providers, handoffImage)
+    if (result?.imageIncluded) {
+      showMessage('Prompt and image handed to the browser helper. If the provider page cannot attach it, upload it manually. The image stays selected here.')
+      return
+    }
+    if (externalAiImage.value) {
+      showMessage('Prompt opened and copied. The image stays in this app; attach it manually in the AI tab.')
+      return
+    }
     if (!result?.copied) {
       showMessage(t('Opened {opened} of {total} AI tabs, but clipboard copy failed. The helper may still send it; the prompt remains here for manual paste.')
         .replace('{opened}', String(result?.opened || 0))
-        .replace('{total}', String(result?.total || providers.length)))
+        .replace('{total}', String(result?.total || providers.length)), 'warning')
     } else if (result.opened < result.total) {
       showMessage(t('Opened {opened} of {total} AI tabs. The browser helper sends the prompt automatically; otherwise paste the copied prompt into each open tab.')
         .replace('{opened}', String(result.opened))
-        .replace('{total}', String(result.total)))
+        .replace('{total}', String(result.total)), 'warning')
     } else {
       showMessage(providers.length === 1
         ? t('Opened {provider} and copied your prompt. The browser helper sends it automatically; without the helper, paste it there.')
@@ -386,7 +528,7 @@ async function openPromptWithProviders(prompt, providers = AI_PROVIDERS) {
   } catch {
     showMessage(providers.length === 1
       ? t('Could not open the AI or copy your prompt. Allow pop-ups and clipboard access, then try again.')
-      : t('Could not open all 3 AI tabs or copy your text. Allow pop-ups and clipboard access, then try again.'))
+      : t('Could not open all 3 AI tabs or copy your text. Allow pop-ups and clipboard access, then try again.'), 'error')
   } finally {
     externalAiPromptSearching.value = false
   }
@@ -403,32 +545,34 @@ function copyTextToClipboard(text) {
 
 async function copyPost(post) {
   if (!post.text) {
-    showMessage(t('This post has no text to copy.'))
+    showMessage(t('This post has no text to copy.'), 'warning')
     return
   }
   try {
     await copyTextToClipboard(post.text)
     showMessage(t('Post copied. Paste it wherever you need.'))
   } catch {
-    showMessage(t('Could not copy the post. Select and copy the text instead.'))
+    showMessage(t('Could not copy the post. Select and copy the text instead.'), 'error')
   }
 }
 
 function copyExternalAiPrompt() {
   const prompt = externalAiPrompt.value
   if (!prompt.trim()) {
-    showMessage('Enter a prompt to continue.')
+    showMessage('Enter a prompt to continue.', 'warning')
     return
   }
   copyTextToClipboard(prompt)
-    .then(() => showMessage('Prompt copied. Paste it into an AI service when you are ready.'))
-    .catch(() => showMessage('Could not copy the prompt. It remains saved here; select it and copy it manually.'))
+    .then(() => showMessage(externalAiImage.value
+      ? 'Prompt copied. The image is not included in clipboard; keep it here to use with the AI service.'
+      : 'Prompt copied. Paste it into an AI service when you are ready.'))
+    .catch(() => showMessage('Could not copy the prompt. It remains saved here; select it and copy it manually.', 'error'))
 }
 
 function openExternalAiTools(providers) {
   const prompt = externalAiPrompt.value
   if (!prompt.trim()) {
-    showMessage('Enter a prompt to continue.')
+    showMessage('Enter a prompt to continue.', 'warning')
     return
   }
   openPromptWithProviders(prompt, providers)
@@ -507,7 +651,7 @@ async function insertPostEmoji(emoji) {
 function updateProfile() {
   const name = profileForm.value.name.trim()
   if (!name) {
-    showMessage('Enter a profile name before saving.')
+    showMessage('Enter a profile name before saving.', 'warning')
     return
   }
   workspace.value.profile = { ...profileForm.value, name }
@@ -520,7 +664,7 @@ function handlePostImage(event) {
   event.target.value = ''
   if (!file) return
   if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
-    showMessage('Choose a PNG, JPEG, GIF, or WebP image up to 4 MB.')
+    showMessage('Choose a PNG, JPEG, GIF, or WebP image up to 4 MB.', 'warning')
     return
   }
   const reader = new FileReader()
@@ -529,7 +673,7 @@ function handlePostImage(event) {
     if (editingPost.value) postEditImage.value = image
     else postImage.value = image
   }
-  reader.onerror = () => showMessage('Could not read that image.')
+  reader.onerror = () => showMessage('Could not read that image.', 'error')
   reader.readAsDataURL(file)
 }
 
@@ -546,7 +690,7 @@ async function submitPost() {
         image: postEditImage.value,
       })
       if (!saved) {
-        showMessage('Could not save this post in this browser.')
+        showMessage('Could not save this post in this browser.', 'error')
         return
       }
       postDialogOpen.value = false
@@ -571,7 +715,7 @@ async function submitPost() {
       image: submittedImage,
       syncStatus: savedOffline ? 'pending' : 'local-only',
     })) {
-      showMessage('Could not save this post in this browser.')
+      showMessage('Could not save this post in this browser.', 'error')
       return
     }
     if (postText.value === submittedText) postText.value = ''
@@ -584,23 +728,12 @@ async function submitPost() {
 }
 
 function togglePostOptions(postId) {
-  if (postMenuId.value === postId) {
-    postMenuId.value = ''
-    postStorageDetailsOpen.value = false
-    return
-  }
-  postMenuId.value = postId
-  postStorageDetailsOpen.value = false
+  postMenuId.value = postMenuId.value === postId ? '' : postId
 }
 
 function editPost(post) {
   postMenuId.value = ''
   openPostDialog(post)
-}
-
-async function checkPostStorageAvailability() {
-  postStorageDetailsOpen.value = true
-  await refreshBrowserStorageEstimate()
 }
 
 function toggleDictation() {
@@ -610,7 +743,7 @@ function toggleDictation() {
   }
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
   if (!SpeechRecognition) {
-    showMessage('Voice dictation is not supported by this browser.')
+    showMessage('Voice dictation is not supported by this browser.', 'warning')
     return
   }
   try {
@@ -631,7 +764,7 @@ function toggleDictation() {
     }
     activeRecognition.onerror = (event) => {
       dictating.value = false
-      if (event.error !== 'aborted') showMessage(event.error === 'not-allowed' ? 'Allow microphone access in your browser to dictate.' : `Voice dictation stopped: ${event.error || 'unknown error'}`)
+      if (event.error !== 'aborted') showMessage(event.error === 'not-allowed' ? 'Allow microphone access in your browser to dictate.' : `Voice dictation stopped: ${event.error || 'unknown error'}`, 'error')
     }
     activeRecognition.onend = () => { dictating.value = false }
     recognition.value = activeRecognition
@@ -639,7 +772,7 @@ function toggleDictation() {
     activeRecognition.start()
   } catch (error) {
     dictating.value = false
-    showMessage(error?.message || 'Could not start voice dictation.')
+    showMessage(error?.message || 'Could not start voice dictation.', 'error')
   }
 }
 
@@ -663,7 +796,7 @@ function togglePin(article) {
     return
   }
   if (pinned.length >= 3) {
-    showMessage('Unpin an article before pinning another. You can pin up to three.')
+    showMessage('Unpin an article before pinning another. You can pin up to three.', 'warning')
     return
   }
   updateArticle(article.id, { pinned: true })
@@ -714,11 +847,11 @@ function saveHighlight() {
   if (!text || !currentArticle.value) return
   const collection = highlightedCollection.value
   if (!collection) {
-    showMessage('Choose a Highlight Collection.')
+    showMessage('Choose a Highlight Collection.', 'warning')
     return
   }
   if ((collection.articleHighlights || []).some((item) => item.articleId === currentArticle.value.id && item.text === text)) {
-    showMessage('This text is already saved in that collection.')
+    showMessage('This text is already saved in that collection.', 'warning')
     return
   }
   const entry = createArticleHighlight({
@@ -802,9 +935,9 @@ async function handleHighlightPhotos(event) {
   const remainingSlots = 8 - highlightDraft.value.items.length
   const chosenFiles = validFiles.slice(0, remainingSlots)
   if (validFiles.length !== files.length) {
-    showMessage(t('Choose PNG, JPEG, GIF, or WebP images up to 4 MB each.'))
+    showMessage(t('Choose PNG, JPEG, GIF, or WebP images up to 4 MB each.'), 'warning')
   } else if (validFiles.length > remainingSlots) {
-    showMessage(t('A highlight collection can include up to 8 photos.'))
+    showMessage(t('A highlight collection can include up to 8 photos.'), 'warning')
   }
   if (!chosenFiles.length) return
 
@@ -818,7 +951,7 @@ async function handleHighlightPhotos(event) {
       }
     }
   } catch (error) {
-    showMessage(t(error?.message || 'Could not read that image.'))
+    showMessage(t(error?.message || 'Could not read that image.'), 'error')
   } finally {
     highlightPhotosLoading.value = false
   }
@@ -837,11 +970,11 @@ function saveHighlightCollection() {
   if (!draft) return
   const title = draft.title.trim()
   if (!title) {
-    showMessage(t('Add a title for this highlight.'))
+    showMessage(t('Add a title for this highlight.'), 'warning')
     return
   }
   if (!draft.items.length && !draft.articleHighlights.length) {
-    showMessage(t('Add at least one photo or saved quote.'))
+    showMessage(t('Add at least one photo or saved quote.'), 'warning')
     return
   }
 
@@ -870,7 +1003,7 @@ function resolveDialog() {
   }
   if (dialog.value.type === 'publish') {
     if (!articleCanPublish(target)) {
-      showMessage('A title and body are required to publish.')
+      showMessage('A title and body are required to publish.', 'warning')
       return
     }
     updateArticle(target.id, publishLocally())
@@ -882,7 +1015,7 @@ function resolveDialog() {
   if (dialog.value.type === 'schedule') {
     const selectedTime = new Date(scheduledAt.value)
     if (!articleCanPublish(target) || !Number.isFinite(selectedTime.getTime()) || selectedTime <= new Date()) {
-      showMessage('Choose a title, body, and a future date and time.')
+      showMessage('Choose a title, body, and a future date and time.', 'warning')
       return
     }
     updateArticle(target.id, scheduleLocally(selectedTime.toISOString()))
@@ -897,7 +1030,7 @@ async function copyArticle(article) {
     await navigator.clipboard.writeText(text)
     showMessage('Article text copied.')
   } catch {
-    showMessage('Could not copy the article. Select and copy the text instead.')
+    showMessage('Could not copy the article. Select and copy the text instead.', 'error')
   }
 }
 
@@ -925,7 +1058,7 @@ function printArticle(article) {
 
 function speakSample() {
   if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
-    showMessage('Text-to-speech is not supported by this browser.')
+    showMessage('Text-to-speech is not supported by this browser.', 'warning')
     return
   }
   window.speechSynthesis.cancel()
@@ -953,12 +1086,17 @@ watch(() => workspace.value.profile, (value) => {
 onMounted(() => {
   if (!selectedCollectionId.value && highlights.value.length) selectedCollectionId.value = highlights.value[0].id
   mobileViewportQuery.addEventListener('change', updateMobileViewport)
+  updateVisualKeyboardInset()
+  window.visualViewport?.addEventListener('resize', updateVisualKeyboardInset)
+  window.visualViewport?.addEventListener('scroll', updateVisualKeyboardInset)
 })
 
 onBeforeUnmount(() => {
   window.clearTimeout(messageTimer.value)
   recognition.value?.stop()
   mobileViewportQuery.removeEventListener('change', updateMobileViewport)
+  window.visualViewport?.removeEventListener('resize', updateVisualKeyboardInset)
+  window.visualViewport?.removeEventListener('scroll', updateVisualKeyboardInset)
   document.documentElement.classList.remove('writing-focus-mode')
 })
 </script>
@@ -1077,24 +1215,6 @@ onBeforeUnmount(() => {
           >
             {{ t('Edit post') }}
           </button>
-          <button
-            type="button"
-            @click="checkPostStorageAvailability"
-          >
-            {{ t('Check storage availability') }}
-          </button>
-          <div
-            v-if="postStorageDetailsOpen"
-            class="post-storage-details"
-            role="status"
-          >
-            <template v-if="browserStorageEstimate.status === 'ready'">
-              <strong>{{ t('Estimated available') }}: {{ formatStorageSize(Math.max(0, browserStorageEstimate.quota - browserStorageEstimate.usage)) }}</strong>
-              <small>{{ t('Used') }}: {{ formatStorageSize(browserStorageEstimate.usage) }} · {{ t('Estimated quota') }}: {{ formatStorageSize(browserStorageEstimate.quota) }}</small>
-              <small>{{ t('This is browser storage for this app, not device RAM.') }}</small>
-            </template>
-            <small v-else>{{ t(browserStorageEstimate.status === 'loading' ? 'Checking...' : 'This browser does not provide a storage estimate.') }}</small>
-          </div>
         </div>
         <p
           v-if="post.text"
@@ -1418,7 +1538,8 @@ onBeforeUnmount(() => {
   <div
     v-else-if="page === 'editor'"
     class="page-wrap editor-page"
-    :class="{ 'is-focused': focusMode }"
+    :class="{ 'is-focused': focusMode, 'is-one-handed': mobileViewport && oneHandMode, 'is-one-handed-left': oneHandSide === 'left' }"
+    :style="oneHandStyle"
   >
     <div class="page-heading page-heading-row">
       <div class="editor-heading-copy">
@@ -1427,6 +1548,38 @@ onBeforeUnmount(() => {
         <p>{{ t('Write and edit your article. Your draft is saved in this browser.') }}</p>
       </div>
       <div class="editor-heading-actions">
+        <button
+          v-if="mobileViewport"
+          class="button button-secondary one-hand-toggle"
+          type="button"
+          :aria-pressed="oneHandMode"
+          @click="oneHandMode = !oneHandMode"
+        >
+          {{ t(oneHandMode ? 'One-hand mode on' : 'One-hand typing') }}
+        </button>
+        <div
+          v-if="mobileViewport && oneHandMode"
+          class="one-hand-side-controls"
+          role="group"
+          :aria-label="t('Toolbar side')"
+        >
+          <button
+            type="button"
+            :class="{ selected: oneHandSide === 'left' }"
+            :aria-pressed="oneHandSide === 'left'"
+            @click="oneHandSide = 'left'"
+          >
+            {{ t('Left') }}
+          </button>
+          <button
+            type="button"
+            :class="{ selected: oneHandSide === 'right' }"
+            :aria-pressed="oneHandSide === 'right'"
+            @click="oneHandSide = 'right'"
+          >
+            {{ t('Right') }}
+          </button>
+        </div>
         <button
           class="button button-secondary editor-manage-button"
           type="button"
@@ -1460,6 +1613,26 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <template v-if="currentArticle">
+      <details class="writing-intention-prompt">
+        <summary>{{ t('Write with good intent') }}</summary>
+        <strong>{{ t('Choose to do good') }}</strong>
+        <p>{{ t('Before you begin, consider how this writing could help someone.') }}</p>
+      </details>
+      <details class="editor-review-checklist">
+        <summary>{{ t('Review before publishing') }} · {{ completedReviewCount }}/{{ reviewItems.length }}</summary>
+        <p>{{ t('A quick quality check before you publish locally.') }}</p>
+        <label
+          v-for="item in reviewItems"
+          :key="item.key"
+        >
+          <input
+            type="checkbox"
+            :checked="Boolean(reviewChecksByArticle[currentArticle.id]?.[item.key])"
+            @change="setReviewCheck(item.key, $event.target.checked)"
+          >
+          <span>{{ t(item.label) }}</span>
+        </label>
+      </details>
       <section class="surface-card editor-card">
         <div class="editor-status">
           <span class="local-badge">{{ t(currentArticle.status) }}</span><span>{{ wordCount }} {{ t('words') }} · {{ t('Updated:') }} {{ articleDate(currentArticle) }}</span>
@@ -1904,7 +2077,7 @@ onBeforeUnmount(() => {
         </span>
       </div>
       <p class="external-ai-intro">
-        {{ t('Send one prompt to Gemini, ChatGPT and Meta AI. With the browser helper installed, it is submitted automatically; otherwise the prompt is copied so you can paste it.') }}
+        {{ t('Send a prompt and optional image to Gemini, ChatGPT and Meta AI. With the browser helper enabled, the image is handed off automatically; otherwise the prompt is copied and you can attach the image manually.') }}
       </p>
       <label
         class="visually-hidden"
@@ -1920,6 +2093,26 @@ onBeforeUnmount(() => {
         rows="4"
         @keydown="handleExternalAiPromptKeydown"
       />
+      <div class="external-ai-image-actions">
+        <label class="button button-secondary external-ai-image-label">
+          <ImagePlus :size="16" />
+          {{ t('Attach image') }}
+          <input type="file" accept="image/*" @change="handleExternalAiImage">
+        </label>
+        <span class="external-ai-image-note">{{ t('The image stays on this device until you submit the handoff.') }}</span>
+      </div>
+      <div v-if="externalAiImage" class="external-ai-image-preview">
+        <img :src="externalAiImage.dataUrl" alt="" />
+        <span>{{ externalAiImage.name }}</span>
+        <button class="icon-button" type="button" :aria-label="t('Remove image')" @click="externalAiImage = null">
+          <X :size="16" />
+        </button>
+      </div>
+      <label v-if="externalAiImage" class="external-ai-image-helper-option">
+        <input v-model="externalAiImageHelperEnabled" type="checkbox">
+        {{ t('I have the browser helper installed; include the image in the handoff.') }}
+      </label>
+      <p v-if="externalAiImageError" class="external-ai-image-error" role="alert">{{ t(externalAiImageError) }}</p>
       <div class="external-ai-prompt-footer">
         <span class="external-ai-prompt-hint">{{ t('Enter opens AI tools and copies your prompt. Shift+Enter adds a line.') }}</span>
         <span class="external-ai-character-count">{{ externalAiPrompt.length.toLocaleString() }}</span>
@@ -2573,6 +2766,7 @@ onBeforeUnmount(() => {
   <div
     v-if="message"
     class="inline-toast"
+    :class="`is-${messageTone}`"
     role="status"
   >
     {{ message }}

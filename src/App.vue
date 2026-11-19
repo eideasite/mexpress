@@ -12,6 +12,7 @@ import {
   FileText,
   House,
   Info,
+  Mail,
   Menu,
   Moon,
   PenLine,
@@ -34,7 +35,7 @@ const route = useRoute()
 const router = useRouter()
 const { workspace, posts, saveStatus, theme, language, recoveryState, sessionStatus, setSessionStatus } = useWorkspace()
 const mobileMenuOpen = ref(false)
-const contactUrl = 'https://jeyamohanme.vercel.app/'
+const contactUrl = 'https://jmsitenew.vercel.app/'
 const contactUrlCopied = ref(false)
 const contactUrlCopyFailed = ref(false)
 const mobileMenuButton = ref(null)
@@ -341,26 +342,6 @@ onUnmounted(() => {
         <span class="brand-mark">ஜெ</span>
         <span class="brand-copy">        <strong>Jeyamohan</strong><small>{{ t('Personal writing space') }}</small></span>
       </RouterLink>
-      <span
-        v-if="networkTest?.status === 'success'"
-        class="mobile-speed-result"
-        :class="`quality-${networkQuality}`"
-        role="status"
-        :aria-label="`${networkTest.downloadMbps} Mbps download speed, ${networkTest.latencyMs} milliseconds latency`"
-      >
-        <Wifi
-          :size="14"
-          aria-hidden="true"
-        />{{ networkTest.downloadMbps }} Mbps
-      </span>
-      <span
-        v-else-if="networkTest?.status === 'running'"
-        class="mobile-speed-result is-testing"
-        :class="`quality-${networkQuality}`"
-        role="status"
-      >
-        {{ t('Testing speed…') }}
-      </span>
       <GoogleAiSearch
         class="desktop-google-search"
         :label="t('Search Google AI')"
@@ -439,7 +420,7 @@ onUnmounted(() => {
       </button>
       <span
         v-if="networkTest?.status === 'success'"
-        class="status-detail"
+        class="status-detail status-detail-speed"
       >{{ networkTest.downloadMbps }} Mbps · {{ networkTest.latencyMs }} ms</span>
       <span
         v-else-if="networkTest?.status === 'error'"
@@ -654,52 +635,71 @@ onUnmounted(() => {
         </section>
         <RouterView />
         <footer class="app-footer">
-          <div class="footer-contact-row">
-            <span>{{ t('Contact us:') }}</span>
-            <a
-              :href="contactUrl"
-              target="_blank"
-              rel="noopener noreferrer"
+          <div class="footer-inner">
+            <div class="footer-contact-group">
+              <div class="footer-contact-row">
+                <span class="footer-contact-label">{{ t('Contact us:') }}</span>
+                <a
+                  :href="contactUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ contactUrl }} <ExternalLink
+                    :size="14"
+                    aria-hidden="true"
+                  />
+                </a>
+                <button
+                  class="footer-copy-button"
+                  type="button"
+                  :aria-label="t(contactUrlCopied ? 'Contact URL copied' : 'Copy contact URL')"
+                  :title="t(contactUrlCopied ? 'Copied' : 'Copy contact URL')"
+                  @click="copyContactUrl"
+                >
+                  <Check
+                    v-if="contactUrlCopied"
+                    :size="16"
+                    aria-hidden="true"
+                  />
+                  <Copy
+                    v-else
+                    :size="16"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+              <span
+                v-if="contactUrlCopyFailed"
+                class="footer-copy-status"
+                role="status"
+              >{{ t('Copy failed. Select the contact URL to copy it.') }}</span>
+              <span
+                v-else-if="contactUrlCopied"
+                class="footer-copy-status"
+                role="status"
+              >{{ t('Contact URL copied') }}</span>
+            </div>
+            <nav
+              class="footer-links-row"
+              :aria-label="t('Footer links')"
             >
-              {{ contactUrl }} <ExternalLink
-                :size="14"
-                aria-hidden="true"
-              />
-            </a>
-            <button
-              class="footer-copy-button"
-              type="button"
-              :aria-label="t(contactUrlCopied ? 'Contact URL copied' : 'Copy contact URL')"
-              :title="t(contactUrlCopied ? 'Copied' : 'Copy contact URL')"
-              @click="copyContactUrl"
-            >
-              <Check
-                v-if="contactUrlCopied"
-                :size="16"
-                aria-hidden="true"
-              />
-              <Copy
-                v-else
-                :size="16"
-                aria-hidden="true"
-              />
-            </button>
+              <a
+                class="footer-email-link"
+                href="mailto:jeyamohan98@gmail.com"
+              >
+                <Mail
+                  :size="14"
+                  aria-hidden="true"
+                />
+                {{ t('Email') }}: jeyamohan98@gmail.com
+              </a>
+              <RouterLink
+                class="footer-policy-link"
+                :to="{ name: 'privacy-policy' }"
+              >{{ t('Privacy Policy') }}</RouterLink>
+            </nav>
+            <span class="footer-copyright">© {{ new Date().getFullYear() }} Jeyamohan Manoharan. {{ t('All rights reserved.') }}</span>
           </div>
-          <span
-            v-if="contactUrlCopyFailed"
-            class="footer-copy-status"
-            role="status"
-          >{{ t('Copy failed. Select the contact URL to copy it.') }}</span>
-          <span
-            v-else-if="contactUrlCopied"
-            class="footer-copy-status"
-            role="status"
-          >{{ t('Contact URL copied') }}</span>
-          <RouterLink
-            class="footer-policy-link"
-            :to="{ name: 'privacy-policy' }"
-          >{{ t('Privacy Policy') }}</RouterLink>
-          <span class="footer-copyright">© {{ new Date().getFullYear() }} Jeyamohan Manoharan. {{ t('All rights reserved.') }}</span>
         </footer>
       </main>
     </div>
