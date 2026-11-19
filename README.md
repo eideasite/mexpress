@@ -106,4 +106,5 @@ For automatic prompt filling and submission in Gemini, ChatGPT, and Meta AI, loa
 - Provider pages and the speed-test endpoint were stubbed in Playwright; no external AI prompt was sent.
 - `npm test`: 3 passed. `npm.cmd run lint`: passed. `npm.cmd run build`: passed.
 #   t h e w r i t e r 4  
+ #   t h e w r i t e r 4  
  
