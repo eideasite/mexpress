@@ -105,3 +105,5 @@ For automatic prompt filling and submission in Gemini, ChatGPT, and Meta AI, loa
 - A Playwright ZIP/TXT restore check exposed and verified a shortcut-list merge bug fix in `src/stores/workspace.js`.
 - Provider pages and the speed-test endpoint were stubbed in Playwright; no external AI prompt was sent.
 - `npm test`: 3 passed. `npm.cmd run lint`: passed. `npm.cmd run build`: passed.
+#   t h e w r i t e r 4  
+ 
