@@ -13,7 +13,7 @@ Last updated: 2026-11-17
 - Article Editor focus mode hides navigation/status chrome, expands the editor, and persists its state in the browser. The current development browser is left with focus mode enabled.
 - Action groups place secondary actions left and main actions right (for groups with four or more, the last two are right-aligned); notifications appear centered near the top. Post creation persists before clearing the composer and confirms as soon as browser storage commits.
 - Vite dev server is pinned to `127.0.0.1:5173` (strict port) so silently changing origin/port does not make local posts appear missing; use the same URL on each run.
-- The desktop/mobile header Google search opens Google Search AI Mode (`udm=50`) with the submitted query in the URL; it does not open Gemini or require clipboard permission. The shared query is cleared only after the AI Mode tab opens.
+- The desktop/mobile global Google search offers regular Google Search or Google Search AI Mode through a dropdown. The selected mode persists in this browser; the shared query is cleared only after the chosen search tab opens.
 - The Privacy Policy route is `/privacy-policy`; its contact card links to the listed email, phone, and LinkedIn profile. The shared footer links to the policy and copies the contact site URL.
 - Document language follows the persisted English/Tamil app selection; the tab favicon uses the Jeyamohan Tamil wordmark rather than the Vite starter icon.
 - The Read Aloud controls have a mobile min-width fix so long system voice names do not cause horizontal page overflow.

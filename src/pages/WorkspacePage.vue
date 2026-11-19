@@ -43,6 +43,7 @@ import { publishLocally, scheduleLocally } from '../services/publishingService.j
 import { makeSafeFilename } from '../utils/article.js'
 import { translate } from '../i18n.js'
 import HomeHighlightsSection from '../components/home/HomeHighlightsSection.vue'
+import SymmetryLessonSection from '../components/home/SymmetryLessonSection.vue'
 import LoadingDots from '../components/common/LoadingDots.vue'
 import AiProviderPicker from '../components/common/AiProviderPicker.vue'
 import ReadAloudControls from '../components/common/ReadAloudControls.vue'
@@ -1360,6 +1361,8 @@ onBeforeUnmount(() => {
       @edit-collection="editHighlightCollection"
       @open-article="openArticle"
     />
+
+    <SymmetryLessonSection :language="language" />
   </div>
 
   <div
@@ -2097,22 +2100,49 @@ onBeforeUnmount(() => {
         <label class="button button-secondary external-ai-image-label">
           <ImagePlus :size="16" />
           {{ t('Attach image') }}
-          <input type="file" accept="image/*" @change="handleExternalAiImage">
+          <input
+            type="file"
+            accept="image/*"
+            @change="handleExternalAiImage"
+          >
         </label>
         <span class="external-ai-image-note">{{ t('The image stays on this device until you submit the handoff.') }}</span>
       </div>
-      <div v-if="externalAiImage" class="external-ai-image-preview">
-        <img :src="externalAiImage.dataUrl" alt="" />
+      <div
+        v-if="externalAiImage"
+        class="external-ai-image-preview"
+      >
+        <img
+          :src="externalAiImage.dataUrl"
+          alt=""
+        >
         <span>{{ externalAiImage.name }}</span>
-        <button class="icon-button" type="button" :aria-label="t('Remove image')" @click="externalAiImage = null">
+        <button
+          class="icon-button"
+          type="button"
+          :aria-label="t('Remove image')"
+          @click="externalAiImage = null"
+        >
           <X :size="16" />
         </button>
       </div>
-      <label v-if="externalAiImage" class="external-ai-image-helper-option">
-        <input v-model="externalAiImageHelperEnabled" type="checkbox">
+      <label
+        v-if="externalAiImage"
+        class="external-ai-image-helper-option"
+      >
+        <input
+          v-model="externalAiImageHelperEnabled"
+          type="checkbox"
+        >
         {{ t('I have the browser helper installed; include the image in the handoff.') }}
       </label>
-      <p v-if="externalAiImageError" class="external-ai-image-error" role="alert">{{ t(externalAiImageError) }}</p>
+      <p
+        v-if="externalAiImageError"
+        class="external-ai-image-error"
+        role="alert"
+      >
+        {{ t(externalAiImageError) }}
+      </p>
       <div class="external-ai-prompt-footer">
         <span class="external-ai-prompt-hint">{{ t('Enter opens AI tools and copies your prompt. Shift+Enter adds a line.') }}</span>
         <span class="external-ai-character-count">{{ externalAiPrompt.length.toLocaleString() }}</span>

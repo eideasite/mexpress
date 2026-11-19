@@ -2,7 +2,12 @@
 import { ref } from 'vue'
 import { Search } from 'lucide-vue-next'
 import LoadingDots from './LoadingDots.vue'
-import { aiSearchQuery, openGoogleAiModeSearch } from '../../services/aiSearch.js'
+import {
+  aiSearchQuery,
+  googleSearchMode,
+  openGoogleAiModeSearch,
+  openGoogleWebSearch,
+} from '../../services/aiSearch.js'
 
 defineOptions({ inheritAttrs: false })
 
@@ -23,18 +28,35 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  webSuccessLabel: {
+    type: String,
+    required: true,
+  },
   loadingLabel: {
+    type: String,
+    required: true,
+  },
+  modeLabel: {
+    type: String,
+    required: true,
+  },
+  aiModeLabel: {
+    type: String,
+    required: true,
+  },
+  webModeLabel: {
     type: String,
     required: true,
   },
 })
 
 const query = aiSearchQuery
+const mode = googleSearchMode
 const searching = ref(false)
 const searchError = ref('')
 const searchStatus = ref('')
 
-function searchGoogleAi() {
+function openGoogleSearchForMode() {
   if (searching.value) return
   const searchQuery = query.value
   if (!searchQuery.trim()) return
@@ -43,9 +65,12 @@ function searchGoogleAi() {
   searchError.value = ''
   searchStatus.value = ''
   try {
-    if (openGoogleAiModeSearch(searchQuery)) {
+    const opened = mode.value === 'web'
+      ? openGoogleWebSearch(searchQuery)
+      : openGoogleAiModeSearch(searchQuery)
+    if (opened) {
       query.value = ''
-      searchStatus.value = props.successLabel
+      searchStatus.value = mode.value === 'web' ? props.webSuccessLabel : props.successLabel
     } else {
       searchError.value = props.errorLabel
     }
@@ -58,7 +83,7 @@ function searchGoogleAi() {
 
 function submitSearch() {
   if (!query.value.trim() || searching.value) return
-  searchGoogleAi()
+  openGoogleSearchForMode()
 }
 </script>
 
@@ -74,6 +99,21 @@ function submitSearch() {
       :size="18"
       aria-hidden="true"
     />
+    <button
+      class="global-search-mode-toggle"
+      :class="{ 'is-on': mode === 'ai' }"
+      type="button"
+      role="switch"
+      :aria-checked="mode === 'ai'"
+      :aria-label="props.modeLabel"
+      :disabled="searching"
+      @click="mode = mode === 'ai' ? 'web' : 'ai'"
+    >
+      <span class="global-search-mode-track" aria-hidden="true">
+        <span class="global-search-mode-thumb" />
+      </span>
+      <span>{{ mode === 'ai' ? props.aiModeLabel : props.webModeLabel }}</span>
+    </button>
     <input
       v-model="query"
       :aria-label="props.label"
