@@ -2,7 +2,6 @@ import { ref, watch } from 'vue'
 import { notifyAppError } from './errorNotifications.js'
 
 const AI_SEARCH_QUERY_KEY = 'jeyamohan-ai-search-query-v1'
-const GOOGLE_SEARCH_MODE_KEY = 'jeyamohan-google-search-mode-v1'
 
 function loadSavedAiSearchQuery() {
   try {
@@ -13,15 +12,7 @@ function loadSavedAiSearchQuery() {
 }
 
 export const aiSearchQuery = ref(loadSavedAiSearchQuery())
-function loadGoogleSearchMode() {
-  try {
-    return localStorage.getItem(GOOGLE_SEARCH_MODE_KEY) === 'web' ? 'web' : 'ai'
-  } catch {
-    return 'ai'
-  }
-}
-
-export const googleSearchMode = ref(loadGoogleSearchMode())
+export const lastSubmittedGoogleSearchQuery = ref('')
 let aiSearchDraftSaveErrorNotified = false
 
 watch(aiSearchQuery, (query) => {
@@ -34,14 +25,6 @@ watch(aiSearchQuery, (query) => {
       notifyAppError('Could not save your AI search draft in this browser.')
       aiSearchDraftSaveErrorNotified = true
     }
-  }
-}, { flush: 'sync' })
-
-watch(googleSearchMode, (mode) => {
-  try {
-    localStorage.setItem(GOOGLE_SEARCH_MODE_KEY, mode)
-  } catch {
-    // The mode still works for the current session if storage is unavailable.
   }
 }, { flush: 'sync' })
 

@@ -186,6 +186,8 @@ Object.assign(tamil, {
   'Opening Google AI Mode...': 'Google AI Mode திறக்கப்படுகிறது...',
   'Opened Google AI Mode with your query.': 'உங்கள் தேடலுடன் Google AI Mode திறக்கப்பட்டது.',
   'Search Google': 'Google-ல் தேடுங்கள்',
+  'Clear search query': 'தேடல் உரையை அழிக்கவும்',
+  'Edit search query': 'தேடல் உரையைத் திருத்தவும்',
   'Search': 'தேடல்',
   'Choose Google search mode': 'Google தேடல் முறையைத் தேர்ந்தெடுக்கவும்',
   'Google AI': 'Google AI',
@@ -347,6 +349,12 @@ Object.assign(tamil, {
   'Toolbar side': 'கருவிப்பட்டியின் பக்கம்',
   Left: 'இடது',
   Right: 'வலது',
+})
+
+Object.assign(tamil, {
+  'Display zoom': 'காட்சி பெரிதாக்கம்',
+  'Scale the whole app for visibility.': 'தெளிவாகப் பார்க்க முழுச் செயலியின் அளவை மாற்றவும்.',
+  'Auto (100%)': 'தானியங்கு (100%)',
 })
 
 const english = Object.fromEntries(Object.entries(tamil).map(([key, value]) => [value, key]))

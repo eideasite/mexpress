@@ -345,14 +345,12 @@ onUnmounted(() => {
       <GoogleAiSearch
         class="desktop-google-search"
         :label="t('Search Google')"
+        :clear-label="t('Clear search query')"
+        :edit-label="t('Edit search query')"
         :error-label="t('Could not open Google Search. Allow pop-ups, then try again.')"
         :loading-label="t('Searching Google...')"
         :success-label="t('Opened Google AI Mode with your query.')"
-        :web-success-label="t('Opened Google Search with your query.')"
         :submit-label="t('Search')"
-        :mode-label="t('Choose Google search mode')"
-        :ai-mode-label="t('Google AI')"
-        :web-mode-label="t('Google Search')"
       />
       <div class="header-tools">
         <span class="header-greeting">{{ profileName }}</span>
@@ -612,14 +610,12 @@ onUnmounted(() => {
           v-if="route.name === 'compose'"
           class="mobile-home-search"
           :label="t('Search Google')"
+          :clear-label="t('Clear search query')"
+          :edit-label="t('Edit search query')"
           :error-label="t('Could not open Google Search. Allow pop-ups, then try again.')"
           :loading-label="t('Searching Google...')"
           :success-label="t('Opened Google AI Mode with your query.')"
-          :web-success-label="t('Opened Google Search with your query.')"
           :submit-label="t('Search')"
-          :mode-label="t('Choose Google search mode')"
-          :ai-mode-label="t('Google AI')"
-          :web-mode-label="t('Google Search')"
         />
         <div
           v-if="route.name !== 'compose' && route.name !== 'privacy-policy'"

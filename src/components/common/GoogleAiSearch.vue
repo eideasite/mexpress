@@ -1,18 +1,25 @@
 <script setup>
-import { ref } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { nextTick, ref } from 'vue'
+import { Pencil, Search, X } from 'lucide-vue-next'
 import LoadingDots from './LoadingDots.vue'
 import {
   aiSearchQuery,
-  googleSearchMode,
+  lastSubmittedGoogleSearchQuery,
   openGoogleAiModeSearch,
-  openGoogleWebSearch,
 } from '../../services/aiSearch.js'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
   label: {
+    type: String,
+    required: true,
+  },
+  clearLabel: {
+    type: String,
+    required: true,
+  },
+  editLabel: {
     type: String,
     required: true,
   },
@@ -28,35 +35,41 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  webSuccessLabel: {
-    type: String,
-    required: true,
-  },
   loadingLabel: {
-    type: String,
-    required: true,
-  },
-  modeLabel: {
-    type: String,
-    required: true,
-  },
-  aiModeLabel: {
-    type: String,
-    required: true,
-  },
-  webModeLabel: {
     type: String,
     required: true,
   },
 })
 
 const query = aiSearchQuery
-const mode = googleSearchMode
 const searching = ref(false)
 const searchError = ref('')
 const searchStatus = ref('')
+const searchInput = ref(null)
 
-function openGoogleSearchForMode() {
+function focusSearchInput() {
+  nextTick(() => searchInput.value?.focus())
+}
+
+function clearSearchQuery() {
+  if (searching.value) return
+  query.value = ''
+  searchError.value = ''
+  searchStatus.value = ''
+  focusSearchInput()
+}
+
+function editSearchQuery() {
+  if (searching.value) return
+  if (!query.value.trim() && lastSubmittedGoogleSearchQuery.value) {
+    query.value = lastSubmittedGoogleSearchQuery.value
+  }
+  searchError.value = ''
+  searchStatus.value = ''
+  focusSearchInput()
+}
+
+function openGoogleSearch() {
   if (searching.value) return
   const searchQuery = query.value
   if (!searchQuery.trim()) return
@@ -65,12 +78,11 @@ function openGoogleSearchForMode() {
   searchError.value = ''
   searchStatus.value = ''
   try {
-    const opened = mode.value === 'web'
-      ? openGoogleWebSearch(searchQuery)
-      : openGoogleAiModeSearch(searchQuery)
+    const opened = openGoogleAiModeSearch(searchQuery)
     if (opened) {
+      lastSubmittedGoogleSearchQuery.value = searchQuery
       query.value = ''
-      searchStatus.value = mode.value === 'web' ? props.webSuccessLabel : props.successLabel
+      searchStatus.value = props.successLabel
     } else {
       searchError.value = props.errorLabel
     }
@@ -83,7 +95,7 @@ function openGoogleSearchForMode() {
 
 function submitSearch() {
   if (!query.value.trim() || searching.value) return
-  openGoogleSearchForMode()
+  openGoogleSearch()
 }
 </script>
 
@@ -99,27 +111,40 @@ function submitSearch() {
       :size="18"
       aria-hidden="true"
     />
-    <button
-      class="global-search-mode-toggle"
-      :class="{ 'is-on': mode === 'ai' }"
-      type="button"
-      role="switch"
-      :aria-checked="mode === 'ai'"
-      :aria-label="props.modeLabel"
-      :disabled="searching"
-      @click="mode = mode === 'ai' ? 'web' : 'ai'"
-    >
-      <span class="global-search-mode-track" aria-hidden="true">
-        <span class="global-search-mode-thumb" />
-      </span>
-      <span>{{ mode === 'ai' ? props.aiModeLabel : props.webModeLabel }}</span>
-    </button>
     <input
+      ref="searchInput"
       v-model="query"
       :aria-label="props.label"
       :placeholder="props.label"
       :disabled="searching"
     >
+    <button
+      v-if="query"
+      class="search-query-action"
+      type="button"
+      :aria-label="props.clearLabel"
+      :title="props.clearLabel"
+      :disabled="searching || !query"
+      @click="clearSearchQuery"
+    >
+      <X
+        :size="17"
+        aria-hidden="true"
+      />
+    </button>
+    <button
+      class="search-query-action"
+      type="button"
+      :aria-label="props.editLabel"
+      :title="props.editLabel"
+      :disabled="searching || (!query.trim() && !lastSubmittedGoogleSearchQuery)"
+      @click="editSearchQuery"
+    >
+      <Pencil
+        :size="16"
+        aria-hidden="true"
+      />
+    </button>
     <button
       class="search-submit ai-hover-button"
       type="submit"

@@ -43,7 +43,6 @@ import { publishLocally, scheduleLocally } from '../services/publishingService.j
 import { makeSafeFilename } from '../utils/article.js'
 import { translate } from '../i18n.js'
 import HomeHighlightsSection from '../components/home/HomeHighlightsSection.vue'
-import SymmetryLessonSection from '../components/home/SymmetryLessonSection.vue'
 import LoadingDots from '../components/common/LoadingDots.vue'
 import AiProviderPicker from '../components/common/AiProviderPicker.vue'
 import ReadAloudControls from '../components/common/ReadAloudControls.vue'
@@ -142,10 +141,23 @@ const fontFamilyOptions = [
   { value: 'arial', label: 'Arial', css: "Arial, 'Noto Sans Tamil', 'Latha', 'Nirmala UI', sans-serif" },
   { value: 'open-sans', label: 'Open Sans', css: "'Open Sans', 'Noto Sans Tamil', 'Latha', 'Nirmala UI', sans-serif" },
 ]
+const displayZoomOptions = [
+  { value: 'auto', label: 'Auto (100%)', scale: 1 },
+  { value: '50%', label: '50%', scale: 0.5 },
+  { value: '75%', label: '75%', scale: 0.75 },
+  { value: '100%', label: '100%', scale: 1 },
+  { value: '125%', label: '125%', scale: 1.25 },
+  { value: '150%', label: '150%', scale: 1.5 },
+  { value: '200%', label: '200%', scale: 2 },
+]
+function getDisplayZoomOption(value) {
+  return displayZoomOptions.find((option) => option.value === value) || displayZoomOptions[0]
+}
 function getFontFamilyOption(value) {
   return fontFamilyOptions.find((option) => option.value === value) || fontFamilyOptions[0]
 }
 const accessibility = ref({
+  displayZoom: 'auto',
   fontScale: 1,
   fontFamily: 'inter',
   boldText: false,
@@ -174,6 +186,7 @@ try {
   const savedAccessibility = JSON.parse(localStorage.getItem('jeyamohan-accessibility-settings-v1') || 'null')
   if (savedAccessibility && typeof savedAccessibility === 'object') {
     accessibility.value = {
+      displayZoom: getDisplayZoomOption(savedAccessibility.displayZoom).value,
       fontScale: Number.isFinite(savedAccessibility.fontScale) ? Math.min(1.3, Math.max(0.9, savedAccessibility.fontScale)) : 1,
       fontFamily: getFontFamilyOption(savedAccessibility.fontFamily).value,
       boldText: savedAccessibility.boldText === true,
@@ -189,6 +202,7 @@ try {
   }
 } catch {
   accessibility.value = {
+    displayZoom: 'auto',
     fontScale: 1,
     fontFamily: 'inter',
     boldText: false,
@@ -346,6 +360,7 @@ async function refreshBrowserStorageEstimate() {
 
 watch(accessibility, (settings) => {
   document.documentElement.style.setProperty('--app-font-scale', String(settings.fontScale))
+  document.documentElement.style.setProperty('--app-display-scale', String(getDisplayZoomOption(settings.displayZoom).scale))
   document.documentElement.style.setProperty('--app-font-family', getFontFamilyOption(settings.fontFamily).css)
   document.documentElement.classList.toggle('accessibility-bold', settings.boldText)
   document.documentElement.classList.toggle('accessibility-outline', settings.outlineText)
@@ -1361,8 +1376,6 @@ onBeforeUnmount(() => {
       @edit-collection="editHighlightCollection"
       @open-article="openArticle"
     />
-
-    <SymmetryLessonSection :language="language" />
   </div>
 
   <div
@@ -1423,6 +1436,22 @@ onBeforeUnmount(() => {
       </div>
       <details class="additional-settings">
         <summary>Additional Settings</summary>
+        <label class="setting-row">
+          <span>
+            <strong>{{ t('Display zoom') }}</strong>
+            <small>{{ t('Scale the whole app for visibility.') }}</small>
+          </span>
+          <select
+            v-model="accessibility.displayZoom"
+            :aria-label="t('Display zoom')"
+          >
+            <option
+              v-for="zoom in displayZoomOptions"
+              :key="zoom.value"
+              :value="zoom.value"
+            >{{ t(zoom.label) }}</option>
+          </select>
+        </label>
         <label class="setting-row"><span><strong>{{ t('Font family') }}</strong><small>{{ t('Choose the app font.') }}</small></span><select
           v-model="accessibility.fontFamily"
           :aria-label="t('Font family')"
